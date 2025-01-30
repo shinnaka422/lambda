@@ -1,0 +1,124 @@
+{
+    "message": "Method Not Allowed",
+    "received_event": {
+        "version": "1.0",
+        "resource": "/weightrecords",
+        "path": "/weightrecords",
+        "httpMethod": "GET",
+        "headers": {
+            "Content-Length": "0",
+            "Host": "vev6vxtar1.execute-api.ap-northeast-1.amazonaws.com",
+            "X-Amzn-Trace-Id": "Root=1-67604fed-57484e2c674cc1161a934a19",
+            "X-Forwarded-For": "124.209.90.38",
+            "X-Forwarded-Port": "443",
+            "X-Forwarded-Proto": "https",
+            "___internal-request-id": "ccb8cd22-eee3-449b-9a45-f5b17726ed5c",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "ja",
+            "priority": "u=1, i",
+            "sec-ch-ua": "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"macOS\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "none"
+        },
+        "multiValueHeaders": {
+            "Content-Length": [
+                "0"
+            ],
+            "Host": [
+                "vev6vxtar1.execute-api.ap-northeast-1.amazonaws.com"
+            ],
+            "X-Amzn-Trace-Id": [
+                "Root=1-67604fed-57484e2c674cc1161a934a19"
+            ],
+            "X-Forwarded-For": [
+                "124.209.90.38"
+            ],
+            "X-Forwarded-Port": [
+                "443"
+            ],
+            "X-Forwarded-Proto": [
+                "https"
+            ],
+            "___internal-request-id": [
+                "ccb8cd22-eee3-449b-9a45-f5b17726ed5c"
+            ],
+            "accept": [
+                "*/*"
+            ],
+            "accept-encoding": [
+                "gzip, deflate, br, zstd"
+            ],
+            "accept-language": [
+                "ja"
+            ],
+            "priority": [
+                "u=1, i"
+            ],
+            "sec-ch-ua": [
+                "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\""
+            ],
+            "sec-ch-ua-mobile": [
+                "?0"
+            ],
+            "sec-ch-ua-platform": [
+                "\"macOS\""
+            ],
+            "sec-fetch-dest": [
+                "empty"
+            ],
+            "sec-fetch-mode": [
+                "cors"
+            ],
+            "sec-fetch-site": [
+                "none"
+            ]
+        },
+        "queryStringParameters": {
+            "lineId": "user12323"
+        },
+        "multiValueQueryStringParameters": {
+            "lineId": [
+                "user12323"
+            ]
+        },
+        "requestContext": {
+            "accountId": "445567077978",
+            "apiId": "vev6vxtar1",
+            "domainName": "vev6vxtar1.execute-api.ap-northeast-1.amazonaws.com",
+            "domainPrefix": "vev6vxtar1",
+            "extendedRequestId": "C5FtOhdbNjMEPgQ=",
+            "httpMethod": "GET",
+            "identity": {
+                "accessKey": null,
+                "accountId": null,
+                "caller": null,
+                "cognitoAmr": null,
+                "cognitoAuthenticationProvider": null,
+                "cognitoAuthenticationType": null,
+                "cognitoIdentityId": null,
+                "cognitoIdentityPoolId": null,
+                "principalOrgId": null,
+                "sourceIp": "124.209.90.38",
+                "user": null,
+                "userAgent": "",
+                "userArn": null
+            },
+            "path": "/weightrecords",
+            "protocol": "HTTP/1.1",
+            "requestId": "C5FtOhdbNjMEPgQ=",
+            "requestTime": "16/Dec/2024:16:06:05 +0000",
+            "requestTimeEpoch": 1734365165885,
+            "resourceId": "GET /weightrecords",
+            "resourcePath": "/weightrecords",
+            "stage": "$default"
+        },
+        "pathParameters": null,
+        "stageVariables": null,
+        "body": null,
+        "isBase64Encoded": false
+    }
+}
