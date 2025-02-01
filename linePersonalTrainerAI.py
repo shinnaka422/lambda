@@ -2,10 +2,11 @@ import json
 import logging
 import os
 import sys
-import boto3
+import openai
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
+import requests
 
 # ログ設定
 logger = logging.getLogger()
@@ -14,78 +15,83 @@ logger.setLevel(logging.INFO)
 # 環境変数からLINEアクセストークンとシークレットを取得
 CHANNEL_ACCESS_TOKEN = os.getenv('CHANNEL_ACCESS_TOKEN')
 CHANNEL_SECRET = os.getenv('CHANNEL_SECRET')
+OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
 
 if not CHANNEL_ACCESS_TOKEN or not CHANNEL_SECRET:
     logger.error('LINE環境変数が設定されていません。')
     sys.exit(1)
 
+# OpenAI APIキーの設定
+openai.api_key = OPENAI_API_KEY
+
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 webhook_handler = WebhookHandler(CHANNEL_SECRET)
 
-# Bedrockクライアントの初期化
-bedrock = boto3.client(
-    service_name='bedrock-runtime',
-    region_name='us-east-1'
-)
-
-# 会話履歴を保持するリスト
-conversation_history = []
-
-def get_claude_response(user_input):
+def get_chatgpt_response(user_input):
     try:
-        # ユーザーの入力を会話履歴に追加
-        conversation_history.append({"role": "user", "content": user_input})
-        
-        # 会話履歴が長すぎる場合は古いメッセージを削除
-        if len(conversation_history) > 10:  # ユーザーとAIのメッセージを合わせて10件
-            conversation_history.pop(0)
-        
-        # Bedrock用のリクエストボディを作成
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 500,
-            "messages": conversation_history
-        })
-        
-        logger.info(f"Request body: {body}")
-        
-        # Bedrockを呼び出してレスポンスを取得
-        response = bedrock.invoke_model(
-            modelId='anthropic.claude-3-haiku-20240307-v1:0',
-            body=body.encode('utf-8')
+        # ChatGPT APIを呼び出してレスポンスを取得
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "user", "content": user_input}
+            ],
+            max_tokens=500,
+            temperature=0.7
         )
         
-        # レスポンスの解析
-        response_body = json.loads(response['body'].read().decode('utf-8'))
-        logger.info(f"Complete response from Bedrock: {response_body}")  # レスポンス全体をログに出力
+        logger.info(f"Complete response from ChatGPT: {response}")
         
-        # Claude 3の新しい応答形式に対応
-        if 'content' in response_body:
-            ai_response = response_body['content'][0]['text']
-            # AIの応答を会話履歴に追加
-            conversation_history.append({"role": "assistant", "content": ai_response})
-            return ai_response
+        # レスポンスの形式が変わるため、アクセス方法を変更
+        if hasattr(response, 'choices') and len(response.choices) > 0:
+            return response.choices[0].message['content']
         else:
-            logger.error(f"Unexpected response format: {response_body}")
+            logger.error(f"Unexpected response format: {response}")
             return "応答の形式が不正です。"
     
     except Exception as e:
-        logger.error(f"Bedrockエラー: {str(e)}")
+        logger.error(f"ChatGPTエラー: {str(e)}")
         return f"エラーが発生しました: {str(e)}"
+
+def start_loading(user_id):
+    """LINEのローディングインジケーターを開始"""
+    try:
+        url = 'https://api.line.me/v2/bot/chat/loading/start'
+        headers = {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': f'Bearer {CHANNEL_ACCESS_TOKEN}'
+        }
+        payload = {
+            'chatId': user_id,
+            'loadingSeconds': 20
+        }
+        
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        logger.info("ローディング開始")
+        
+    except Exception as e:
+        logger.error(f"ローディング開始エラー: {str(e)}")
 
 @webhook_handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     try:
         # ユーザーのメッセージ内容
         user_message = event.message.text
-
+        user_id = event.source.user_id
+        
+        # ローディングを開始
+        start_loading(user_id)
+        
         # Claudeからの応答を取得
-        answer = get_claude_response(user_message)
+        answer = get_chatgpt_response(user_message)
         logger.info(f"Claude response: {answer}")
-
+        
         # 応答メッセージをLINEに送信
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=answer))
-
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=answer)
+        )
+    
     except Exception as e:
         logger.error(f"handle_message関数でエラーが発生しました: {e}")
         line_bot_api.reply_message(
