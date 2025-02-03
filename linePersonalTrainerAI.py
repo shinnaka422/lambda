@@ -7,6 +7,9 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 import requests
+import boto3
+from datetime import datetime
+from boto3.dynamodb.conditions import Key
 
 # ログ設定
 logger = logging.getLogger()
@@ -27,30 +30,81 @@ openai.api_key = OPENAI_API_KEY
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 webhook_handler = WebhookHandler(CHANNEL_SECRET)
 
-def get_chatgpt_response(user_input):
+# DynamoDB クライアントの初期化
+dynamodb = boto3.resource('dynamodb')
+conversation_table = dynamodb.Table('linebot-conversation-history')
+
+def get_chatgpt_response(user_input, conversation_history):
+    """
+    ChatGPTからの応答を取得
+    """
     try:
+        # 会話履歴に現在の入力を追加
+        messages = conversation_history + [{"role": "user", "content": user_input}]
+        
         # ChatGPT APIを呼び出してレスポンスを取得
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "user", "content": user_input}
-            ],
+            messages=messages,
             max_tokens=500,
             temperature=0.7
         )
         
-        logger.info(f"Complete response from ChatGPT: {response}")
-        
-        # レスポンスの形式が変わるため、アクセス方法を変更
-        if hasattr(response, 'choices') and len(response.choices) > 0:
-            return response.choices[0].message['content']
+        if response.choices and len(response.choices) > 0:
+            return response.choices[0].message.content
         else:
-            logger.error(f"Unexpected response format: {response}")
-            return "応答の形式が不正です。"
+            logger.error("ChatGPTから応答がありませんでした")
+            return "申し訳ありません。応答を生成できませんでした。"
     
     except Exception as e:
         logger.error(f"ChatGPTエラー: {str(e)}")
         return f"エラーが発生しました: {str(e)}"
+
+def get_conversation_history(line_id, limit=10):
+    """
+    指定されたユーザーの会話履歴を取得
+    """
+    try:
+        response = conversation_table.query(
+            KeyConditionExpression=Key('lineId').eq(line_id),
+            ScanIndexForward=False,  # 新しい順
+            Limit=limit
+        )
+        
+        # 古い順に並び替え
+        messages = sorted(response['Items'], key=lambda x: x['timestamp'])
+        
+        # ChatGPTに送信する形式に変換
+        formatted_messages = []
+        for msg in messages:
+            formatted_messages.append({"role": "user", "content": msg['user_message']})
+            if msg.get('assistant_message'):
+                formatted_messages.append({"role": "assistant", "content": msg['assistant_message']})
+        
+        return formatted_messages
+    
+    except Exception as e:
+        logger.error(f"会話履歴の取得エラー: {str(e)}")
+        return []
+
+def save_conversation(line_id, user_message, assistant_message):
+    """
+    会話をDynamoDBに保存
+    """
+    try:
+        timestamp = datetime.now().isoformat()
+        conversation_table.put_item(
+            Item={
+                'lineId': line_id,
+                'timestamp': timestamp,
+                'user_message': user_message,
+                'assistant_message': assistant_message
+            }
+        )
+        logger.info(f"会話を保存しました: {line_id}")
+    
+    except Exception as e:
+        logger.error(f"会話の保存エラー: {str(e)}")
 
 def start_loading(user_id):
     """LINEのローディングインジケーターを開始"""
@@ -75,16 +129,21 @@ def start_loading(user_id):
 @webhook_handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     try:
-        # ユーザーのメッセージ内容
         user_message = event.message.text
         user_id = event.source.user_id
         
         # ローディングを開始
         start_loading(user_id)
         
-        # Claudeからの応答を取得
-        answer = get_chatgpt_response(user_message)
-        logger.info(f"Claude response: {answer}")
+        # 会話履歴を取得
+        conversation_history = get_conversation_history(user_id)
+        
+        # ChatGPTからの応答を取得
+        answer = get_chatgpt_response(user_message, conversation_history)
+        logger.info(f"ChatGPT response: {answer}")
+        
+        # 会話を保存
+        save_conversation(user_id, user_message, answer)
         
         # 応答メッセージをLINEに送信
         line_bot_api.reply_message(
