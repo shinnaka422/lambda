@@ -73,7 +73,7 @@ def get_chatgpt_response(user_input, conversation_history):
         logger.error(f"ChatGPTエラー: {str(e)}")
         return f"エラーが発生しました: {str(e)}"
 
-def get_conversation_history(line_id, limit=10):
+def get_conversation_history(line_id, limit=5):
     """
     指定されたユーザーの会話履歴を取得
     """
