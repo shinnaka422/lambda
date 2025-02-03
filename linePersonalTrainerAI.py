@@ -39,8 +39,21 @@ def get_chatgpt_response(user_input, conversation_history):
     ChatGPTからの応答を取得
     """
     try:
-        # 会話履歴に現在の入力を追加
-        messages = conversation_history + [{"role": "user", "content": user_input}]
+        # システムメッセージを追加
+        messages = [
+            {
+                "role": "system",
+                "content": "あなたはLINEチャットボットのアシスタントです。ユーザーとの会話履歴を考慮しながら、親切で自然な返答をしてください。"
+            }
+        ]
+        
+        # 会話履歴を追加
+        messages.extend(conversation_history)
+        
+        # 現在の入力を追加
+        messages.append({"role": "user", "content": user_input})
+        
+        logger.info(f"Sending messages to ChatGPT: {messages}")
         
         # ChatGPT APIを呼び出してレスポンスを取得
         response = openai.ChatCompletion.create(
@@ -71,16 +84,23 @@ def get_conversation_history(line_id, limit=10):
             Limit=limit
         )
         
-        # 古い順に並び替え
+        # 古い順に並び替え（タイムスタンプで昇順ソート）
         messages = sorted(response['Items'], key=lambda x: x['timestamp'])
         
         # ChatGPTに送信する形式に変換
         formatted_messages = []
         for msg in messages:
-            formatted_messages.append({"role": "user", "content": msg['user_message']})
+            formatted_messages.append({
+                "role": "user", 
+                "content": msg['user_message']
+            })
             if msg.get('assistant_message'):
-                formatted_messages.append({"role": "assistant", "content": msg['assistant_message']})
+                formatted_messages.append({
+                    "role": "assistant", 
+                    "content": msg['assistant_message']
+                })
         
+        logger.info(f"Retrieved conversation history: {formatted_messages}")
         return formatted_messages
     
     except Exception as e:
@@ -137,6 +157,7 @@ def handle_message(event):
         
         # 会話履歴を取得
         conversation_history = get_conversation_history(user_id)
+        logger.info(f"Conversation history length: {len(conversation_history)}")
         
         # ChatGPTからの応答を取得
         answer = get_chatgpt_response(user_message, conversation_history)
