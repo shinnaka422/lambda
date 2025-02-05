@@ -60,7 +60,7 @@ def create_stripe_checkout_session(line_user_id):
 def create_subscription_flex_message(checkout_url):
     """サブスクリプション案内のFlexメッセージを作成"""
     return FlexSendMessage(
-        alt_text="サブスクリプションのごaaaa案内",
+        alt_text="サブスクリプションのご案内",
         contents={
             "type": "bubble",
             "header": {
