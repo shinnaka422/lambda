@@ -3,6 +3,7 @@ import requests
 import os
 from linebot import LineBotApi
 from linebot.models import FlexSendMessage, TextSendMessage
+import linebot.v3.messaging
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -13,19 +14,18 @@ line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 def start_loading(user_id):
     """LINEのローディングインジケーターを開始"""
     try:
-        url = 'https://api.line.me/v2/bot/chat/loading/start'
-        headers = {
-            'Content-Type': 'application/json; charset=UTF-8',
-            'Authorization': f'Bearer {CHANNEL_ACCESS_TOKEN}'
-        }
-        payload = {
-            'chatId': user_id,
-            'loadingSeconds': 20
-        }
-
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        logger.info("ローディング開始")
+        configuration = linebot.v3.messaging.Configuration(
+            access_token=os.getenv('CHANNEL_ACCESS_TOKEN')
+        )
+        
+        with linebot.v3.messaging.ApiClient(configuration) as api_client:
+            api_instance = linebot.v3.messaging.MessagingApi(api_client)
+            show_loading_animation_request = linebot.v3.messaging.ShowLoadingAnimationRequest(
+                chat_id=user_id,
+                loading_seconds=20
+            )
+            api_response = api_instance.show_loading_animation(show_loading_animation_request)
+            logger.info("ローディング開始")
 
     except Exception as e:
         logger.error(f"ローディング開始エラー: {str(e)}")
